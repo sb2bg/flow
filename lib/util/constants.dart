@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:macos_ui/macos_ui.dart';
 
 Widget preloader = const Center(child: CupertinoActivityIndicator());
 
@@ -65,5 +66,23 @@ extension Show on BuildContext {
         ],
       ),
     );
+  }
+
+  Future<void> showNonFatalError(String message) async {
+    showMacosAlertDialog(
+        context: this,
+        builder: (_) {
+          return MacosAlertDialog(
+            appIcon: const Icon(CupertinoIcons.exclamationmark_triangle),
+            title: const Text('Error'),
+            message: Text(message),
+            primaryButton: PushButton(
+                controlSize: ControlSize.large,
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(this).pop();
+                }),
+          );
+        });
   }
 }
