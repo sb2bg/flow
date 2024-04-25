@@ -2,15 +2,14 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flow/main.dart';
-import 'package:flow/util/ollama/message_model.dart';
-import 'package:flow/util/ollama/model_response.dart';
+import 'package:flow/util/constants.dart';
 import 'package:flow/widgets/chat_history.dart';
 import 'package:flow/widgets/preview_images.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:macos_ui/macos_ui.dart';
-import 'package:flow/util/ollama/ollama.dart' as ollama;
+import 'package:ollama_dart/ollama_dart.dart';
 
 class LLMInterfaceContent extends StatefulWidget {
   const LLMInterfaceContent(
@@ -23,14 +22,13 @@ class LLMInterfaceContent extends StatefulWidget {
   State<LLMInterfaceContent> createState() => _LLMInterfaceContentState();
 }
 
-typedef MessageHistory = List<(MessageType, String, List<Uint8List>)>;
-
 class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
-  final _chatHistory = <(MessageType, String, List<Uint8List>)>[];
+  final _chatHistory = List<Message>.empty(growable: true);
   bool _waiting = false;
   final _stops = <int>{};
   final _controller = TextEditingController();
-  final _images = <String, Uint8List>{};
+  final Map<String, Uint8List> _pendingImages = {};
+  final List<List<Uint8List>> _sentImages = [];
   late FocusNode focusNode;
 
   @override
@@ -87,28 +85,37 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
     final message = _controller.text.trim();
     _controller.clear();
 
-    final images = _images.keys.toList();
-    final previews = _images.values.toList();
-    _images.clear();
+    final images = _pendingImages.keys.toList();
+    final previews = _pendingImages.values.toList();
+    _pendingImages.clear();
 
     if (message.isEmpty && images.isEmpty) {
       return;
     }
 
     setState(() {
-      _chatHistory.add((MessageType.user, message, previews));
+      final userMessage = images.isEmpty
+          ? Message(role: MessageRole.user, content: message)
+          : Message(role: MessageRole.user, content: message, images: images);
+
+      _chatHistory.add(userMessage);
+      _sentImages.add(previews);
       _waiting = true;
     });
 
-    final stream = ollama.sendMessage(
-      MessageRequest(
-          model: widget.model.name,
-          messages: _chatHistory,
-          images: images,
-          options: Options(systemPrompt: null)),
+    final name = widget.model.name;
+
+    if (name == null) {
+      context.showNonFatalError('Model name is null');
+      return;
+    }
+
+    final stream = client.generateChatCompletionStream(
+      request: GenerateChatCompletionRequest(
+          model: name, messages: _chatHistory, options: const RequestOptions()),
     );
 
-    _chatHistory.add((MessageType.assistant, '', []));
+    _chatHistory.add(const Message(role: MessageRole.assistant, content: ''));
     final id = _chatHistory.length - 1;
 
     await for (final response in stream) {
@@ -117,11 +124,17 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
         break;
       }
 
-      // replace \n with \n\n because our markdown parser doesn't handle single newlines
-      final appended = _chatHistory.last.$2 + response.message;
+      if (response.message == null) {
+        context.showNonFatalError('Response message is null');
+        break;
+      }
+
+      // maybe replace \n with \n\n because our markdown parser doesn't handle single newlines
+      final appended = _chatHistory.last.content + response.message!.content;
 
       setState(() {
-        _chatHistory[id] = (MessageType.assistant, appended, []);
+        _chatHistory[id] =
+            Message(role: MessageRole.assistant, content: appended);
       });
     }
 
@@ -131,26 +144,27 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
   }
 
   bool get canSubmit =>
-      _controller.text.trim().isNotEmpty || _images.isNotEmpty;
+      _controller.text.trim().isNotEmpty || _pendingImages.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Expanded(child: ChatHistory(messages: _chatHistory)),
+        Expanded(
+            child: ChatHistory(messages: _chatHistory, images: _sentImages)),
         Padding(
           padding: const EdgeInsets.all(4.0),
           child: RawKeyboardListener(
             focusNode: focusNode,
             child: Column(
               children: [
-                if (_images.isNotEmpty)
+                if (_pendingImages.isNotEmpty)
                   ImagePreview(
-                      bytes: _images.values.toList(),
+                      bytes: _pendingImages.values.toList(),
                       height: 150,
                       onRemove: (value) {
                         setState(() {
-                          _images.removeWhere((_, v) => v == value);
+                          _pendingImages.removeWhere((_, v) => v == value);
                         });
                       }),
                 Row(
@@ -175,7 +189,7 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
                                       final base64 = base64Encode(bytes);
 
                                       setState(() {
-                                        _images[base64] = bytes;
+                                        _pendingImages[base64] = bytes;
                                       });
                                     }
                                   }

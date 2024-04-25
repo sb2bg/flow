@@ -1,11 +1,12 @@
+import 'package:flow/main.dart';
 import 'package:flow/pages/llm_page.dart';
 import 'package:flow/util/db/conversation.dart';
-import 'package:flow/util/ollama/model_response.dart';
 import 'package:flow/util/ollama/ollama.dart';
 import 'package:flow/widgets/loading_state.dart';
 import 'package:flow/widgets/side_bar_content.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:macos_ui/macos_ui.dart';
+import 'package:ollama_dart/ollama_dart.dart';
 
 class FlowHome extends StatefulWidget {
   const FlowHome({super.key});
@@ -25,21 +26,20 @@ class _FlowHomeState extends LoadingState<FlowHome> {
           'Ollama local server cannot be reached. Please start it and try again.');
     }
 
-    final models = await getLocalModels();
+    final models = await client.listModels();
 
-    if (models == null) {
+    if (models.models == null) {
+      return Future.error('Could not retrieve models. Please try again later.');
+    }
+
+    if (models.models!.isEmpty) {
       return Future.error(
-          'Failed to load models from Ollama. Please try again.');
+          'No models found. Please pull a model and try again.');
     }
 
     _conversations = {
-      for (var model in models.models) model: await model.getConversations(),
+      for (var model in models.models!) model: [],
     };
-
-    if (_conversations.isEmpty) {
-      return Future.error(
-          'No conversations found. Please start a conversation and try again.');
-    }
   }
 
   @override
@@ -58,7 +58,7 @@ class _FlowHomeState extends LoadingState<FlowHome> {
                 for (var model in _conversations.keys)
                   SidebarItem(
                     leading: const MacosIcon(CupertinoIcons.tray_full_fill),
-                    label: Text(model.displayName),
+                    label: Text(model.displayName ?? 'Unknown Model'),
                     disclosureItems: _conversations[model]!.isEmpty
                         ? null
                         : [
@@ -135,7 +135,8 @@ class _FlowHomeState extends LoadingState<FlowHome> {
               LLMInterfaceContent(
                 model: _conversations.keys.elementAt(i),
                 index: i,
-              ): _conversations.keys.elementAt(i).displayName,
+              ): _conversations.keys.elementAt(i).displayName ??
+                  'Unknown Model',
           },
         ));
   }

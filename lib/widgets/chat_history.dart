@@ -1,23 +1,16 @@
-import 'package:flow/pages/llm_page.dart';
+import 'dart:typed_data';
+
 import 'package:flow/widgets/preview_images.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:macos_ui/macos_ui.dart';
-
-enum MessageType {
-  assistant,
-  user;
-
-  @override
-  String toString() {
-    return this == assistant ? 'assistant' : 'user';
-  }
-}
+import 'package:ollama_dart/ollama_dart.dart';
 
 class ChatHistory extends StatefulWidget {
-  const ChatHistory({super.key, required this.messages});
+  const ChatHistory({super.key, required this.messages, required this.images});
 
-  final MessageHistory messages;
+  final List<Message> messages;
+  final List<List<Uint8List>> images;
 
   @override
   State<ChatHistory> createState() => _ChatHistoryState();
@@ -81,7 +74,7 @@ class _ChatHistoryState extends State<ChatHistory> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  widget.messages[index].$1 == MessageType.assistant
+                  widget.messages[index].role == MessageRole.assistant
                       ? const Text('Assistant',
                           style: TextStyle(
                               fontWeight: FontWeight.bold,
@@ -91,10 +84,10 @@ class _ChatHistoryState extends State<ChatHistory> {
                               fontWeight: FontWeight.bold,
                               color: MacosColors.systemGreenColor)),
                   const SizedBox(height: 5),
-                  widget.messages[index].$1 == MessageType.assistant
+                  widget.messages[index].role == MessageRole.assistant
                       ? MarkdownBody(
                           // FIXME: Newlines only work in code blocks
-                          data: widget.messages[index].$2,
+                          data: widget.messages[index].content,
                           styleSheet: MarkdownStyleSheet(
                             p: const TextStyle(
                               color: MacosColors.white,
@@ -157,12 +150,14 @@ class _ChatHistoryState extends State<ChatHistory> {
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                              if (widget.messages[index].$2.isNotEmpty)
-                                Text(widget.messages[index].$2),
-                              if (widget.messages[index].$3.isNotEmpty) ...[
+                              if (widget.messages[index].content.isNotEmpty)
+                                Text(widget.messages[index].content),
+                              // divide by 2 because we only store images for the user, but the index is for all messages
+                              // therefore, we need to divide by 2 to get the correct index
+                              if (widget.images[index ~/ 2].isNotEmpty) ...[
                                 const SizedBox(height: 10),
                                 ImagePreview(
-                                  bytes: widget.messages[index].$3,
+                                  bytes: widget.images[index ~/ 2],
                                   height: 175,
                                 ),
                               ],
