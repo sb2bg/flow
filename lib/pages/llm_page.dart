@@ -1,0 +1,222 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flow/main.dart';
+import 'package:flow/util/ollama/message_model.dart';
+import 'package:flow/util/ollama/model_response.dart';
+import 'package:flow/widgets/chat_history.dart';
+import 'package:flow/widgets/preview_images.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:macos_ui/macos_ui.dart';
+import 'package:flow/util/ollama/ollama.dart' as ollama;
+
+class LLMInterfaceContent extends StatefulWidget {
+  const LLMInterfaceContent(
+      {super.key, required this.model, required this.index});
+
+  final Model model;
+  final int index;
+
+  @override
+  State<LLMInterfaceContent> createState() => _LLMInterfaceContentState();
+}
+
+typedef MessageHistory = List<(MessageType, String, List<Uint8List>)>;
+
+class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
+  final _chatHistory = <(MessageType, String, List<Uint8List>)>[];
+  bool _waiting = false;
+  final _stops = <int>{};
+  final _controller = TextEditingController();
+  final _images = <String, Uint8List>{};
+  late FocusNode focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+
+    focusNode = FocusNode(onKey: (node, event) {
+      if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
+        if (!event.isShiftPressed) {
+          _sendMessage();
+          return KeyEventResult.handled;
+        }
+      }
+
+      return KeyEventResult.ignored;
+    });
+
+    chatActionNotifier.addListener(_chatActionListener);
+  }
+
+  @override
+  void dispose() {
+    focusNode.dispose();
+    chatActionNotifier.removeListener(_chatActionListener);
+    super.dispose();
+  }
+
+  void _addStop() {
+    setState(() {
+      _stops.add(_chatHistory.length - 1);
+      _waiting = false;
+    });
+  }
+
+  void _chatActionListener() {
+    if (chatActionNotifier.isMarked(widget.index)) {
+      if (_waiting) {
+        _addStop();
+      }
+
+      setState(() {
+        _chatHistory.clear();
+      });
+
+      chatActionNotifier.unmarkChat(widget.index);
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    if (_waiting) {
+      return;
+    }
+
+    final message = _controller.text.trim();
+    _controller.clear();
+
+    final images = _images.keys.toList();
+    final previews = _images.values.toList();
+    _images.clear();
+
+    if (message.isEmpty && images.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _chatHistory.add((MessageType.user, message, previews));
+      _waiting = true;
+    });
+
+    final stream = ollama.sendMessage(
+      MessageRequest(
+          model: widget.model.name,
+          messages: _chatHistory,
+          images: images,
+          options: Options(systemPrompt: null)),
+    );
+
+    _chatHistory.add((MessageType.assistant, '', []));
+    final id = _chatHistory.length - 1;
+
+    await for (final response in stream) {
+      if (_stops.contains(id)) {
+        _stops.remove(id);
+        break;
+      }
+
+      // replace \n with \n\n because our markdown parser doesn't handle single newlines
+      final appended = _chatHistory.last.$2 + response.message;
+
+      setState(() {
+        _chatHistory[id] = (MessageType.assistant, appended, []);
+      });
+    }
+
+    setState(() {
+      _waiting = false;
+    });
+  }
+
+  bool get canSubmit =>
+      _controller.text.trim().isNotEmpty || _images.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(child: ChatHistory(messages: _chatHistory)),
+        Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: RawKeyboardListener(
+            focusNode: focusNode,
+            child: Column(
+              children: [
+                if (_images.isNotEmpty)
+                  ImagePreview(
+                      bytes: _images.values.toList(),
+                      height: 150,
+                      onRemove: (value) {
+                        setState(() {
+                          _images.removeWhere((_, v) => v == value);
+                        });
+                      }),
+                Row(
+                  children: [
+                    IconButton(
+                        onPressed: _waiting
+                            ? null
+                            : () async {
+                                FilePickerResult? result =
+                                    await FilePicker.platform.pickFiles(
+                                  type: FileType.custom,
+                                  allowMultiple: true,
+                                  withData: true,
+                                  allowedExtensions: ['jpg', 'png', 'jpeg'],
+                                );
+
+                                if (result != null) {
+                                  for (final file in result.files) {
+                                    final bytes = file.bytes;
+
+                                    if (bytes != null) {
+                                      final base64 = base64Encode(bytes);
+
+                                      setState(() {
+                                        _images[base64] = bytes;
+                                      });
+                                    }
+                                  }
+                                }
+                              },
+                        icon: const Icon(CupertinoIcons.photo_fill),
+                        disabledColor: Colors.grey[700],
+                        padding: const EdgeInsets.all(8)),
+                    Expanded(
+                      child: MacosTextField(
+                        controller: _controller,
+                        suffix: null,
+                        placeholder: 'Send a message to ${widget.model.name}',
+                        padding: const EdgeInsets.all(10.0),
+                        maxLines: null,
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                        onSubmitted: (value) {
+                          _sendMessage();
+                        },
+                      ),
+                    ),
+                    IconButton(
+                        icon: _waiting
+                            ? const Icon(CupertinoIcons.square_fill)
+                            : const Icon(CupertinoIcons.paperplane_fill),
+                        disabledColor: Colors.grey[700],
+                        onPressed: _waiting
+                            ? _addStop
+                            : canSubmit
+                                ? _sendMessage
+                                : null,
+                        padding: const EdgeInsets.all(8)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
