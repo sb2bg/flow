@@ -1,8 +1,6 @@
 import 'package:flutter/cupertino.dart';
 
-class ChatActionNotifier extends ChangeNotifier {
-  ChatActionNotifier();
-
+class ActionNotifier extends ChangeNotifier {
   final Set<int> _markedChats = {};
 
   void deleteChat(int index) {
