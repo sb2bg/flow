@@ -84,23 +84,21 @@ ToolBar _kToolBar(context, title, index) => ToolBar(
 class _MacosSideBarContentState extends State<MacosSideBarContent> {
   @override
   Widget build(BuildContext context) {
-    return IndexedStack(
-        index: widget.pageIndex,
-        children: widget.children
-            .map((body, title) {
-              return MapEntry(
-                title,
-                MacosScaffold(
-                  toolBar: _kToolBar(context, title, widget.pageIndex),
-                  children: [
-                    ContentArea(
-                      builder: ((context, scrollController) => body),
-                    ),
-                  ],
-                ),
-              );
-            })
-            .values
-            .toList());
+    final children = widget.children.map(_buildChild).values.toList();
+    return IndexedStack(index: widget.pageIndex, children: children);
+  }
+
+  MapEntry<String, MacosScaffold> _buildChild(dynamic body, String title) {
+    return MapEntry(
+      title,
+      MacosScaffold(
+        toolBar: _kToolBar(context, title, widget.pageIndex),
+        children: [
+          ContentArea(
+            builder: ((context, scrollController) => body),
+          ),
+        ],
+      ),
+    );
   }
 }
