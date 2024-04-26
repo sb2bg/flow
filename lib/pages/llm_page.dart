@@ -35,9 +35,10 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
   void initState() {
     super.initState();
 
-    focusNode = FocusNode(onKeyEvent: (node, event) {
-      if (event.logicalKey == LogicalKeyboardKey.enter) {
-        if (event.logicalKey != LogicalKeyboardKey.shift) {
+    focusNode = FocusNode(onKey: (node, event) {
+      if (HardwareKeyboard.instance
+          .isLogicalKeyPressed(LogicalKeyboardKey.enter)) {
+        if (!HardwareKeyboard.instance.isShiftPressed) {
           _sendMessage();
           return KeyEventResult.handled;
         }
@@ -84,15 +85,16 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
     }
 
     final message = _controller.text.trim();
+
+    if (message.isEmpty && _pendingImages.isEmpty) {
+      return;
+    }
+
     _controller.clear();
 
     final images = _pendingImages.keys.toList();
     final previews = _pendingImages.values.toList();
     _pendingImages.clear();
-
-    if (message.isEmpty && images.isEmpty) {
-      return;
-    }
 
     setState(() {
       final userMessage = images.isEmpty
