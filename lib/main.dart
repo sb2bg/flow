@@ -8,10 +8,9 @@ import 'package:macos_ui/macos_ui.dart';
 import 'package:ollama_dart/ollama_dart.dart';
 
 Future<void> main() async {
-  const config = MacosWindowUtilsConfig();
-
   // config can only be applied on macOS
   if (Platform.isMacOS) {
+    const config = MacosWindowUtilsConfig();
     config.apply();
   }
 
