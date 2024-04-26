@@ -35,9 +35,9 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
   void initState() {
     super.initState();
 
-    focusNode = FocusNode(onKey: (node, event) {
-      if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
-        if (!event.isShiftPressed) {
+    focusNode = FocusNode(onKeyEvent: (node, event) {
+      if (event.logicalKey == LogicalKeyboardKey.enter) {
+        if (event.logicalKey != LogicalKeyboardKey.shift) {
           _sendMessage();
           return KeyEventResult.handled;
         }
@@ -71,6 +71,7 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
 
       setState(() {
         _chatHistory.clear();
+        _sentImages.clear();
       });
 
       chatActionNotifier.unmarkChat(widget.index);
@@ -154,7 +155,7 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
             child: ChatHistory(messages: _chatHistory, images: _sentImages)),
         Padding(
           padding: const EdgeInsets.all(4.0),
-          child: RawKeyboardListener(
+          child: KeyboardListener(
             focusNode: focusNode,
             child: Column(
               children: [
