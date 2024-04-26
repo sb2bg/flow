@@ -1,6 +1,5 @@
 import 'package:flow/main.dart';
 import 'package:flow/pages/llm_page.dart';
-import 'package:flow/util/db/conversation.dart';
 import 'package:flow/util/ollama/ollama.dart';
 import 'package:flow/widgets/loading_state.dart';
 import 'package:flow/widgets/side_bar_content.dart';
@@ -18,7 +17,7 @@ class FlowHome extends StatefulWidget {
 
 class _FlowHomeState extends LoadingState<FlowHome> {
   int _pageIndex = 0;
-  late Map<Model, List<Conversation>> _conversations;
+  late List<Model> models;
 
   @override
   Future<void> onInit() async {
@@ -38,9 +37,7 @@ class _FlowHomeState extends LoadingState<FlowHome> {
           'No models found. Please pull a model and try again.');
     }
 
-    _conversations = {
-      for (var model in models.models!) model: [],
-    };
+    this.models = models.models!;
   }
 
   @override
@@ -56,20 +53,11 @@ class _FlowHomeState extends LoadingState<FlowHome> {
                 setState(() => _pageIndex = index);
               },
               items: [
-                for (var model in _conversations.keys)
+                for (var model in models)
                   SidebarItem(
                     leading: const MacosIcon(CupertinoIcons.tray_full_fill),
-                    label: Text(model.name ?? 'Unknown Model'),
-                    disclosureItems: _conversations[model]!.isEmpty
-                        ? null
-                        : [
-                            for (var conversation in _conversations[model]!)
-                              SidebarItem(
-                                leading: const MacosIcon(
-                                    CupertinoIcons.chat_bubble_fill),
-                                label: Text(conversation.name),
-                              ),
-                          ],
+                    label: Text(model.name ?? const Uuid().v4()),
+                    // in the future, if we want indivudal chat history, we can add a disclosure field
                   ),
               ],
             );
@@ -89,7 +77,7 @@ class _FlowHomeState extends LoadingState<FlowHome> {
                   title: const Text('New Chat'),
                   subtitle: const Text('Start a conversation'),
                   onClick: () async {
-                    // TODO: implement new chat
+                    // for if we ever want to make sub chats
                   },
                 ),
               ),
@@ -166,11 +154,11 @@ class _FlowHomeState extends LoadingState<FlowHome> {
         child: MacosSideBarContent(
           pageIndex: _pageIndex,
           children: {
-            for (int i = 0; i < _conversations.keys.length; i++)
+            for (var i = 0; i < models.length; i++)
               LLMInterfaceContent(
-                model: _conversations.keys.elementAt(i),
+                model: models[i],
                 index: i,
-              ): _conversations.keys.elementAt(i).name ?? const Uuid().v4()
+              ): models[i].name ?? const Uuid().v4()
           },
         ));
   }
