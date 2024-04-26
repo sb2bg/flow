@@ -7,6 +7,7 @@ import 'package:flow/widgets/side_bar_content.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:ollama_dart/ollama_dart.dart';
+import 'package:uuid/uuid.dart';
 
 class FlowHome extends StatefulWidget {
   const FlowHome({super.key});
@@ -58,7 +59,7 @@ class _FlowHomeState extends LoadingState<FlowHome> {
                 for (var model in _conversations.keys)
                   SidebarItem(
                     leading: const MacosIcon(CupertinoIcons.tray_full_fill),
-                    label: Text(model.displayName ?? 'Unknown Model'),
+                    label: Text(model.name ?? 'Unknown Model'),
                     disclosureItems: _conversations[model]!.isEmpty
                         ? null
                         : [
@@ -81,62 +82,95 @@ class _FlowHomeState extends LoadingState<FlowHome> {
               onChanged: (value) {}),
           bottom: Column(
             children: [
-              MacosListTile(
-                leading: const MacosIcon(CupertinoIcons.plus),
-                title: const Text('New Chat'),
-                subtitle: const Text('Start a conversation'),
-                onClick: () async {
-                  // TODO: implement new chat
-                },
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: MacosListTile(
+                  leading: const MacosIcon(CupertinoIcons.plus),
+                  title: const Text('New Chat'),
+                  subtitle: const Text('Start a conversation'),
+                  onClick: () async {
+                    // TODO: implement new chat
+                  },
+                ),
               ),
               const SizedBox(height: 15),
-              MacosListTile(
-                  leading: const MacosIcon(CupertinoIcons.eye_slash),
-                  title: const Text('Incognito Mode'),
-                  subtitle: const Text('Hide your activity'),
-                  onClick: () async {
-                    showMacosAlertDialog(
-                      context: context,
-                      builder: (_) => MacosAlertDialog(
-                          appIcon: const Icon(CupertinoIcons.eye_slash),
-                          title: const Text('Incognito Mode'),
-                          message: const Text(
-                              'You are now in incognito mode. Your activity will not be saved.'),
-                          primaryButton: PushButton(
-                            controlSize: ControlSize.large,
-                            child: const Text('Continue'),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                          secondaryButton: PushButton(
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: MacosListTile(
+                    leading: const MacosIcon(CupertinoIcons.eye_slash),
+                    title: const Text('Incognito Mode'),
+                    subtitle: const Text('Hide your activity'),
+                    onClick: () async {
+                      showMacosAlertDialog(
+                        context: context,
+                        builder: (_) => MacosAlertDialog(
+                            appIcon: const Icon(CupertinoIcons.eye_slash),
+                            title: const Text('Incognito Mode'),
+                            message: const Text(
+                                'You are now in incognito mode. Your activity will not be saved.'),
+                            primaryButton: PushButton(
                               controlSize: ControlSize.large,
-                              secondary: true,
+                              child: const Text('Continue'),
                               onPressed: () {
                                 Navigator.of(context).pop();
                               },
-                              child: const Text('Cancel'))),
-                    );
-                  }),
+                            ),
+                            secondaryButton: PushButton(
+                                controlSize: ControlSize.large,
+                                secondary: true,
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Cancel'))),
+                      );
+                    }),
+              ),
               const SizedBox(height: 15),
-              MacosListTile(
-                  leading: const MacosIcon(CupertinoIcons.arrow_clockwise),
-                  title: const Text('Reload Models'),
-                  subtitle: const Text('Refresh the list of models'),
-                  onClick: () async {}),
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: MacosListTile(
+                    leading: const MacosIcon(CupertinoIcons.arrow_clockwise),
+                    title: const Text('Reload Models'),
+                    subtitle: const Text('Refresh the list of models'),
+                    onClick: () async {
+                      await onInit();
+
+                      if (!context.mounted) {
+                        return;
+                      }
+
+                      showMacosAlertDialog(
+                          context: context,
+                          builder: (_) {
+                            return MacosAlertDialog(
+                                appIcon:
+                                    const Icon(CupertinoIcons.arrow_clockwise),
+                                title: const Text('Reload Models'),
+                                message:
+                                    const Text('Models have been reloaded.'),
+                                primaryButton: PushButton(
+                                  controlSize: ControlSize.large,
+                                  child: const Text('Continue'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ));
+                          });
+
+                      setState(() {});
+                    }),
+              ),
             ],
           ),
         ),
         child: MacosSideBarContent(
           pageIndex: _pageIndex,
           children: {
-            // TODO: eventually, this will be a list of chats
             for (int i = 0; i < _conversations.keys.length; i++)
               LLMInterfaceContent(
                 model: _conversations.keys.elementAt(i),
                 index: i,
-              ): _conversations.keys.elementAt(i).displayName ??
-                  'Unknown Model',
+              ): _conversations.keys.elementAt(i).name ?? const Uuid().v4()
           },
         ));
   }
