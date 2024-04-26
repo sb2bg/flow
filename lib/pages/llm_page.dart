@@ -35,6 +35,7 @@ class _LLMInterfaceContentState extends State<LLMInterfaceContent> {
   void initState() {
     super.initState();
 
+    // ignore: deprecated_member_use
     focusNode = FocusNode(onKey: (node, event) {
       if (HardwareKeyboard.instance
           .isLogicalKeyPressed(LogicalKeyboardKey.enter)) {
