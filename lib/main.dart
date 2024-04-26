@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flow/pages/home_page.dart';
 import 'package:flow/util/action_notifier.dart';
@@ -8,7 +9,11 @@ import 'package:ollama_dart/ollama_dart.dart';
 
 Future<void> main() async {
   const config = MacosWindowUtilsConfig();
-  await config.apply();
+
+  // config can only be applied on macOS
+  if (Platform.isMacOS) {
+    config.apply();
+  }
 
   runApp(const MyApp());
 }
