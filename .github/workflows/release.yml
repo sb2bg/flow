@@ -32,11 +32,10 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter build windows --release
-      - run: ls -R
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: build/windows/runner/Release/*.exe
+          path: build/windows/x64/runner/Release/*.exe
 
   build-linux:
     runs-on: ubuntu-latest
@@ -54,7 +53,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: build/linux/release/bundle/*
+          path: build/linux/x64/release/bundle/*
 
   release:
     needs: [build-macos, build-windows, build-linux]
