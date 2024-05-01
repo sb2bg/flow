@@ -1,5 +1,7 @@
 # Flow
 
+![Github Actions Status](https://github.com/sb2bg/flow/actions/workflows/release.yml/badge.svg)
+
 ![Flow Logo](https://raw.githubusercontent.com/sb2bg/flow/173e35f29e44f4cd5431b094e71871f3aacf4568/macos/Runner/Assets.xcassets/AppIcon.appiconset/256-mac.png?token=GHSAT0AAAAAACD24Q4YXCCTTOVNDZYRCUWAZRSS3YQ)
 
 Flow is a simple and easy to use GUI for Ollama LLMs (Language Model Models) such as Llama3, Mistral, and even multimodal models such as Llava. For a full list of supported models, see the [Ollama Website](https://ollama.com/models).
