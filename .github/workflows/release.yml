@@ -73,11 +73,9 @@ jobs:
           name: linux-build
       - name: Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             build/macos/Build/Products/Release/*.app
             build/windows/runner/Release/*.exe
             build/linux/release/bundle/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: startsWith(github.ref, 'refs/tags/')
