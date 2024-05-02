@@ -54,8 +54,19 @@ jobs:
           name: linux-build
           path: build/linux/x64/release/bundle/*
 
-  release:
+  create-tag:
     needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create tag
+        run: |
+          TAG=$(date +v%Y%m%d-%H%M%S)
+          git tag $TAG
+          git push origin $TAG
+
+  release:
+    needs: create-tag
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -63,19 +74,23 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: macOS-build
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
+      steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS-build
+          path: release/macos
+      - uses: actions/download-artifact@v4
         with:
           name: windows-build
-      - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
+          path: release/windows
+      - uses: actions/download-artifact@v4
         with:
           name: linux-build
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+          path: release/linux
+      - uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/macos/Build/Products/Release/*.app
-            build/windows/runner/Release/*.exe
-            build/linux/release/bundle/*
+            release/macos/*.app
+            release/windows/*.exe
+            release/linux/*
+          tag_name: ${{ github.ref }}
