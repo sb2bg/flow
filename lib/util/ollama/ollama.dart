@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flow/util/ollama/version_response.dart';
 import 'package:http/http.dart';
 import 'package:ollama_dart/ollama_dart.dart';
 
@@ -23,6 +22,18 @@ Future<bool> isOllama() async {
     }
   } catch (e) {
     return false;
+  }
+}
+
+class Version {
+  final String version;
+
+  Version({required this.version});
+
+  factory Version.fromJson(Map<String, dynamic> json) {
+    return Version(
+      version: json['version'],
+    );
   }
 }
 
