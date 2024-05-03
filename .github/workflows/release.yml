@@ -54,16 +54,23 @@ jobs:
           name: linux-build
           path: build/linux/x64/release/bundle/*
 
-  create-tag:
+ create-tag:
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - name: Create tag
+        id: tag
         run: |
           TAG=$(date +v%Y%m%d-%H%M%S)
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "::set-output name=tag::$TAG"
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions"
           git tag $TAG
           git push origin $TAG
 
@@ -71,22 +78,17 @@ jobs:
     needs: create-tag
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: macOS-build
-          path: release/macos
-      - uses: actions/download-artifact@v4
-        with:
-          name: windows-build
-          path: release/windows
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-build
-          path: release/linux
-      - uses: softprops/action-gh-release@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+      - name: Display structure of downloaded files
+        run: ls -R
+      - name: Create Release
+      - uses: softprops/action-gh-release@v1
         with:
           files: |
-            release/macos/*.app
-            release/windows/*.exe
-            release/linux/*
-          tag_name: ${{ github.ref }}
+            build/macos/Build/Products/Release/*.app
+            build/windows/x64/runner/Release/*.exe
+            build/linux/x64/release/bundle/*
+          tag_name: ${{ needs.create-tag.outputs.tag_name }}
