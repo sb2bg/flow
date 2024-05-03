@@ -54,7 +54,7 @@ jobs:
           name: linux-build
           path: build/linux/x64/release/bundle/*
 
- create-tag:
+  create-tag:
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     outputs:
