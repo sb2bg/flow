@@ -66,7 +66,7 @@ jobs:
       - name: Create tag
         id: tag
         run: |
-          TAG=$(date +v%Y%m%d-%H%M%S)
+          TAG=v$(yq -r '.version' 'pubspec.yaml')
           echo "TAG=$TAG" >> $GITHUB_ENV
           echo "::set-output name=tag::$TAG"
           git config --global user.email "github-actions@github.com"
@@ -88,7 +88,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            build/macos/Build/Products/Release/*.app
-            build/windows/x64/runner/Release/*.exe
-            build/linux/x64/release/bundle/*
+            macOS-build/*.app
+            windows-build/*.exe
+            linux-build/*
           tag_name: ${{ needs.create-tag.outputs.tag_name }}
