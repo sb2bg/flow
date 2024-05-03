@@ -18,10 +18,11 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter build macos --release
+      - run: mv build/macos/Build/Products/Release/*.app build/macos/Build/Products/Release/flow_apple_silicon.app
       - uses: actions/upload-artifact@v4
         with:
           name: macOS-build
-          path: build/macos/Build/Products/Release/*.app
+          path: build/macos/Build/Products/Release/*.app/*
 
   build-windows:
     runs-on: windows-latest
@@ -32,6 +33,7 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter build windows --release
+      - run: mv build/windows/x64/runner/Release/*.exe build/windows/x64/runner/Release/flow_windows_x64.exe
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
@@ -49,6 +51,7 @@ jobs:
           sudo apt-get install -y ninja-build libgtk-3-dev
       - run: flutter pub get
       - run: flutter build linux --release
+      - run: mv build/linux/x64/release/bundle/* build/linux/x64/release/bundle/flow_linux_x64
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
@@ -88,7 +91,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            macOS-build/*.app
+            macOS-build/*.app/*
             windows-build/*.exe
             linux-build/*
           tag_name: ${{ needs.create-tag.outputs.tag_name }}
