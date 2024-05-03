@@ -22,7 +22,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: macOS-build
-          path: build/macos/Build/Products/Release/*.app/*
+          path: build/macos/Build/Products/Release/*.app
 
   build-windows:
     runs-on: windows-latest
@@ -93,7 +93,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            macOS-build/*.app/*
+            macOS-build/*.app
             windows-build/*.exe
             linux-build/*
           tag_name: ${{ needs.create-tag.outputs.tag_name }}
